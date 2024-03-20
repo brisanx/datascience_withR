@@ -1,0 +1,162 @@
+---
+title: "proyecto03_asociacion"
+author: "Alba Sánchez Ibáñez"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Analizando dataset Iris
+
+1.  Cargar en R el dataset Iris, librerías, etc...
+
+```{r}
+#dataset
+data(iris)
+
+#librerías
+library(dplyr)
+library(arules)
+library(datasets)
+```
+
+2.  Utilizar las funciones que se han visto para analizar el dataset, ver número de transacciones, items del dataset, información estadística del dataset.
+
+```{r}
+
+# info estadística
+summary(iris) 
+
+# numero filas
+nrow(iris)
+
+# nombres de items
+colnames(iris)
+
+# dataset preprocesado con discretize
+iris_discreto <- iris %>% mutate(Sepal.Length = discretize(Sepal.Length, breaks = 3),
+                                 Sepal.Width = discretize(Sepal.Width, breaks = 3),
+                                 Petal.Length = discretize(Petal.Length, breaks = 3),
+                                 Petal.Width = discretize(Petal.Width, breaks = 3))
+iris_discreto
+```
+
+Algoritmo apriori para obtener reglas de asociación con confianza 0.5 y soporte 0.01. 
+Llamar estas reglas r1. Sino, modifica valores.
+
+```{r}
+r1 <- apriori(iris_discreto, parameter = list(supp=0.001, conf=0.5))
+summary(r1)
+inspect(head(r1))
+```
+
+¿Hay reglas redundantes? Guarda las reglas en r1 de dos formas distintas. Busca en el paquete arules info de is.redundant (no)
+
+```{r}
+# version1
+r1_v1 <- r1[is.redundant(r1)]
+
+# version2
+sum(is.redundant(r1))
+r1_v2 <- r1[which(is.redundant(r1))]
+
+inspect(head(r1_v1))
+inspect(head(r1_v2))
+```
+
+
+Eliminar redundancia y guardar el conjunto de reglas no redundantes en una variable
+
+```{r}
+r1_sin_redundantes <- r1[which(!is.redundant(r1))]
+
+length(is.redundant(r1_sin_redundantes))
+nrow(r1_sin_redundantes)
+
+inspect(head(r1_sin_redundantes))
+```
+
+Genera 3 conjuntos de reglas que cumplan que ciertos valores estén a la izquierda y/o derecha
+
+```{r}
+r2 <- subset(r1_sin_redundantes, subset = lhs %in% "Sepal.Length=[4.3,5.4)")
+length(r2)
+inspect(head(r2))
+
+r3 <- subset(r1_sin_redundantes, subset = lhs %in% "Petal.Length=[1,2.63)")
+inspect(head(r3))
+length(r3)
+
+r4 <- subset(r1_sin_redundantes, subset = rhs %in% "Species=setosa")
+inspect(head(r4))
+length(r4)
+```
+
+Unir r2 y r3 y buscar reglas duplicadas y reglas redundantes
+
+```{r}
+r23 <- union(r2,r3)
+r23[duplicated(r23)] # No hay en este caso
+```
+
+Intersección de r2 y r3
+```{r}
+r2y3 <- intersect(r2,r3)
+r2y3
+```
+
+Subset para inspeccionar las reglas con distintas condiciones
+```{r}
+sub1 <- subset(r1_sin_redundantes, lhs %pin% "Length" | rhs %pin% "Length" & lift > 1)
+length(sub1)
+inspect(head(sub1))
+
+sub2 <- subset(r1_sin_redundantes, lhs %oin% c("Sepal.Length=[4.3,5.4)","Species=setosa") & coverage > 0.3)
+length(sub2)
+inspect(head(sub2))
+```
+
+Usa summary, sort
+```{r}
+summary(r1_sin_redundantes)
+inspect(head(sort(r1,by="lift")))
+inspect(head(sort(r1,decreasing=TRUE,by="confidence")))
+```
+
+Explicar y usar los comandos de paquete arules siguientes:
+```{r}
+discreto_reglas <- split(f=iris_discreto$Species,x=iris_discreto[,"Petal.Length"])
+discreto_reglas <- as(discreto_reglas,"transactions")
+inspect(discreto_reglas) # Para tener un transactions
+```
+
+
+_dissimilarity_ devuelve una matriz de distancias de datos binarios como transacciones, la función usada se puede pasar como parámetro.
+
+```{r}
+head(dissimilarity(r1,r1_sin_redundantes)) #No se que hace
+```
+
+_image_ devuelve un gráfico de matrices de datos binarios.
+
+```{r}
+image(discreto_reglas)
+```
+
+_is.significant_ usa la prueba introducida como parámetro para obtener reglas significativas
+
+```{r}
+inspect(head(r1[is.significant(r1)])) # Devuelve TRUE o FALSE para cada índice
+```
+
+_itemFrequency_ obtiene la frecuencia de elementos en matrices de objetos, como transacciones.
+
+```{r}
+itemFrequency(discreto_reglas,type = "relative")
+```

@@ -1,0 +1,70 @@
+---
+title: "Soporte-Confianza"
+author: "Alba Sánchez Ibáñez"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Trabajando con el paquete arules
+
+## Objetivo  y ejemplo de ejecución
+
+```{r}
+library(arules)
+data(Adult)
+reglas <- apriori(Adult, parameter = list(supp=0.1,conf=1))
+reg1 <- reglas[10]
+inspect(reg1)
+
+```
+
+
+- dado el dataset **Adult** del que se han generado reglas de asociación, 
+
+- a reg1 por error le hemos borrado el soporte y la confianza
+
+```{r}
+reg1@quality$support <- 0
+reg1@quality$confidence <- 0
+reg1@quality
+```
+
+
+Escribir una función **computer_suppport_confidence** que  dado un dataset y una regla de asociación obtenida a partir del dataset con el comando apriori,  obtenga:
+
+- **soporte($X \cup Y$)** (soporte de la unión de X e Y)
+- **confianza(X -> Y)**
+
+Y estos valores calculados visto en en clase se  almacenen en la regla. 
+
+La función tendría el siguiente formato:
+
+``` {r}
+computer_suppport_confidence <- function(Dataset, Rule1){
+....
+return(list( my.soporte=....., my.confidence=.....   ))
+
+}
+```
+
+Un ejemplo de uso, por ejemplo con el dataset Adult:
+
+```{r, eval=FALSE}
+
+# esta sería la ejecución de vuestra rutina:
+computer_suppport_confidence(Adult,rules[5])
+# y esto es lo que devuelve  y podéis ver que coincide
+## $my.soporte
+## [1] 0.1366447
+## 
+## $my.confidence
+## [1] 1
+```
+

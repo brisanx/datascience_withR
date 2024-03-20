@@ -1,0 +1,166 @@
+---
+title: "Reglas de Asociación - Proyecto - Consumo"
+author: "Alba Sánchez Ibáñez"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Proyecto - Análisis de consumo de productos de una empresa.
+
+Dataset **consumo.csv** de productos comprados en una gran cafetería.
+
+Importamos dataset consumo.cv
+
+```{r}
+library(tidyverse)
+library(readr)
+library(arules)
+consumo <- read_csv("consumo.csv", show_col_types=FALSE)
+```
+
+Calculamos cuántos compradores distintos hay en el dataset (me baso en que las transaciones del mismo número son de un cliente)
+
+```{r, echo=FALSE}
+clientes <- sum(duplicated(consumo$Transaction))
+clientes
+```
+
+Calculamos cuántos productos distintos se han vendido. 
+
+```{r}
+productos_distintos <- sum(duplicated(consumo$Item))
+```
+
+¿Cuáles son los 10 más vendidos?
+
+```{r}
+productos_mas_vendidos <- consumo %>%
+  group_by(Item)%>%
+  summarise(cantidad=n()) %>%
+  arrange(desc(cantidad)) 
+
+head(productos_mas_vendidos$Item, n=10L)
+```
+
+Separa la fecha en año, mes y día. 
+
+```{r}
+extraer_fecha <- function(fecha) {
+  mi_fecha <- parse_date(fecha)
+  return(list(dia=day(mi_fecha),mes=month(mi_fecha), anyo=year(mi_fecha)))
+}
+
+consumo$Date <- as.character(consumo$Date)
+
+lista <- lapply(consumo$Date, extraer_fecha)
+
+dia <- sapply(lista, function(x) x[1]$dia)
+mes <- sapply(lista, function(x) x[2]$mes)
+anyo <- sapply(lista, function(x) x[3]$anyo)
+
+consumo$Día <- dia
+consumo$Mes <- mes
+consumo$Año <- anyo
+```
+
+Obten qué años, meses y días hay más ventas.
+
+```{r}
+mas_ventas_por_anyo <- consumo %>%
+  group_by(Año)%>%
+  summarise(cantidad=n()) %>%
+  arrange(desc(cantidad)) 
+mas_ventas_por_anyo[[1]][1]
+
+mas_ventas_por_mes <- consumo %>%
+  group_by(Mes)%>%
+  summarise(cantidad=n()) %>%
+  arrange(desc(cantidad)) 
+mas_ventas_por_mes[[1]][1]
+
+mas_ventas_por_dia <- consumo %>%
+  group_by(Día)%>%
+  summarise(cantidad=n()) %>%
+  arrange(desc(cantidad)) 
+mas_ventas_por_dia[[1]][1]
+
+```
+ Visualiza las ventas acumuladas por meses.
+ 
+ Usa split para construir a partir de dataset una lista con nombre lista.compra.usuarios en la que cada elemento de la lista es cada comprador junto con todos los productos que ha comprado
+ 
+```{r}
+lista.compra.usuarios <- split(consumo$Item, consumo$Transaction)
+
+class(lista.compra.usuarios)
+lista.compra.usuarios[1:2]
+```
+Hacer summary de lista.compra.usuarios
+```{r}
+summary(lista.compra.usuarios)
+```
+
+Contar cuántos usuarios hay en la lista lista.compra.usuarios
+```{r}
+length(lista.compra.usuarios)
+```
+
+Convertir a tipo de datos transacciones. Guardar en Tlista.compra.usuarios.
+
+```{r, warning=FALSE}
+Tlista.compra.usuarios <- as(lista.compra.usuarios, Class = "transactions")
+```
+
+Hacer inspect de los dos primeros valores de Tlista.compra.usuarios
+```{r, warning=FALSE}
+inspect(Tlista.compra.usuarios[1:2])
+```
+Generar las reglas de asociación con 80% de confianza y 15% de soporte (prueba los umbrales)
+
+Con estos valores salen 0 reglas, los he modificado a un soporte del 1% y una confianza del 25% para obtener un conjunto de 287 reglas.
+
+```{r, warning=FALSE}
+data("Tlista.compra.usuarios")
+rules <- apriori(Tlista.compra.usuarios, parameter = list(supp=0.01, conf=0.25))
+summary(rules)
+```
+
+Ordenar las reglas por lift. Guardar el resultado en variable nueva.
+
+```{r}
+rules_2 <- sort(rules, decreasing=TRUE,by="lift")
+inspect(rules_2)
+```
+
+Eliminar todas las reglas redundantes. Calcular el % de reglas redundantes que había.
+
+```{r}
+rules_3 <- rules_2[!is.redundant(rules_2)]
+
+inspect(rules_3)
+```
+
+Quédate con las reglas que son significativas (?)
+
+Buscar ayuda de itemFrequencyPlot para visualizar las 10 transacciones más frecuentes.
+
+Crear dataframe(dos columnas - número de productos, lista de productos como texto) con la información de cada transacción.
+
+
+## Conclusiones
+
+- ¿Cuáles son los productos más vendidos?
+-> Café, pan, pastel, té, Sándwich, Medialuna, Chocolate caliente, Galletas, Brownie...
+
+- Explica alguna regla e indica si este conocimiento te haría cambiar tu política de ventas para obtener más beneficios.
+-> Por ejemplo, la segunda regla, nos indica que la gente que suele comprar chocolate caliente tiende a comprar pastel. De forma lógica concuerda con algo que es normal y se podría llegar a hacer un pack de ahorro que aumente las ventas, sabiendo de antemano que es un conjunto que ya de por sí se suele comprar.
+
+- ¿Cómo incrementar ventas?
+-> Como he dicho en la pregunta anterior. También se puede mirar desde otro lado y productos que no se venden tanto ponerles descuentos y ofertas para así fomentar su compra.
