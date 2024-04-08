@@ -1,0 +1,115 @@
+---
+title: "Repaso Global Examen 1"
+author: "Alba Sánchez Ibáñez"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# EXAMEN 1 - 12/04/2024
+
+El contenido del examen comprende los siguientes temas:
+
+-   Iniciación a R, Programación Funcional, Análisis Exploratorio de Datos - DPLYR
+
+-   Reglas de Asociación (apriori, arules)
+
+-   FCA
+
+## PARTE 1 - Introducción a R, Programación Funcional, DPLYR
+
+### (Introducción a R) Ejercicio - Preguntas cuestionario
+
+**Tipos de datos:**
+
+```         
+Si ejecutas en R:
+
+V <- TRUE
+La constante TRUE almacenada en V es de tipo atómica
+
+
+n <- "2"
+Si hago (as.numeric(n)) devuelve el valor numérico 2.
+
+v <- c(1,2,3) + c(5,6,7,8)
+El máximo elemento del resultado es 10
+```
+
+**Introduce en R lo siguiente:**
+
+```         
+v <- seq(from=2, to=3, by=0.1)
+La longitud de v es 11.
+
+v1 <- c(1,c(2,c(3,4,5)),1:3)
+v1 <- c(v1,v1, c(1,NA))
+La longitud de v1 es 18.
+
+v <- rep(seq(1, 5, 3), times=3)
+La media de v es 2.5
+```
+
+### (DPLYR) Ejercicio - Manipulación de Datos - starwarks
+
+```{r starwarks, echo=FALSE, warning=FALSE}
+library(tidyverse)
+library(rmarkdown)
+paged_table(starwars)
+```
+
+#### 1. Obtener los 10 humanos más viejos, masculinos, con planeta natal Tatooine
+
+```{r}
+starwars %>%
+  arrange(desc(birth_year)) %>%
+  filter(species=="Human", gender=="masculine", homeworld=="Tatooine") %>%
+  head(10)
+
+```
+
+#### 2. Personajes de ojos azules y rubi\@s de especie humana de Tatooine, ordenados por edad de menor a mayor. Calcular su altura media.
+
+```{r}
+rubitos <- starwars %>%
+  filter(hair_color=="blond", eye_color=="blue", species=="Human", homeworld=="Tatooine") %>%
+  arrange(birth_year)  
+
+rubitos
+
+rubitos  %>%
+  summarise(mean_height=mean(height, na.rm=TRUE))
+```
+
+#### 3. Personajes de especie Human o Naboo. Calcular una variable con los valores pesado o ligero (masa \> 79 = pesado). Mostrar la variables name, height mass y heavyorlight, y ordenar por masa de mayor a menor.
+
+```{r}
+starwars %>%
+  filter(species=="Human" | species=="Naboo") %>%
+  mutate(heavyorlight = ifelse(mass > 79,"pesado","ligero")) %>%
+  select(name, height, mass, heavyorlight) %>%
+  arrange(desc(mass))
+```
+
+#### 4. Calcular el índice de masa corporal de todos los personajes (eliminando los que tienen masa o altura NA). Mostrar el nombre, altura, masa e IMC, con orden de IMC descendente.
+
+```{r}
+starwars %>%
+  filter(!is.na(height) & !is.na(mass)) %>%
+  mutate(IMC = mass/(height*2)*100) %>%
+  select(name, height, mass, IMC) %>%
+  arrange(desc(IMC))
+```
+
+#### 5. Obtener los personajes cuya única nave fuese un X-wing y ordenarlos de forma descendente según su masa
+
+```{r}
+starwars %>%
+  filter(sapply(starships, function(x) length(x)==1 && x =="X-wing")) %>%
+  arrange(desc(mass))
+```
